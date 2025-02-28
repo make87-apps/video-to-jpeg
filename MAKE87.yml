@@ -3,7 +3,7 @@ build_kit:
   version: latest
 inbound_topics:
   - name: VIDEO_DATA
-    message_type: make87_messages.video.any.FrameAny
+    message_type: make87_messages.video.any.FrameAny:0.0.89
 outbound_topics:
   - name: JPEG_IMAGE
     message_type: make87_messages.image.compressed.image_jpeg.ImageJPEG
