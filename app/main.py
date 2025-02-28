@@ -48,7 +48,7 @@ class VideoStreamProcessor:
         packet = av.Packet(submessage.data)
         try:
             frames = self.codec_context.decode(packet)
-            if not packet.is_keyframe:
+            if not submessage.is_keyframe:
                 return  # Skip non-keyframes
             for frame in frames:
                 if isinstance(frame, av.VideoFrame):
