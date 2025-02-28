@@ -72,7 +72,7 @@ def main():
     m87.initialize()
 
     # Setup publisher
-    publisher = m87.get_publisher(name="JPEG_STREAM", message_type=ImageJPEG)
+    publisher = m87.get_publisher(name="JPEG_IMAGE", message_type=ImageJPEG)
 
     # Create the video processor instance with subsampling (e.g., every 5th frame)
     processor = VideoStreamProcessor(publisher)
