@@ -1,13 +1,13 @@
 import io
 import av
 import make87 as m87
+from make87_messages.image.compressed.image_jpeg_pb2 import ImageJPEG
 from make87_messages.video.any_pb2 import FrameAny
-from make87_messages.image.jpeg_pb2 import JpegImage
-from PIL import Image
 
 
 class VideoStreamProcessor:
-    def __init__(self):
+    def __init__(self, publisher):
+        self.publisher = publisher
         self.codec_context = None  # Decoder state
         self.received_keyframe = False  # Ensure we start decoding at a keyframe
 
@@ -53,9 +53,8 @@ class VideoStreamProcessor:
             for frame in frames:
                 if isinstance(frame, av.VideoFrame):
                     jpeg_data = self.convert_frame_to_jpeg(frame)
-                    jpeg_message = JpegImage(header=submessage.header, data=jpeg_data)
-                    publisher.publish(jpeg_message)  # Send JPEG over make87
-                    return  # Only process the first valid frame per packet
+                    jpeg_message = ImageJPEG(header=submessage.header, data=jpeg_data)
+                    self.publisher.publish(jpeg_message)  # Send JPEG over make87
         except Exception as e:
             print(f"Decoder error: {e}")
 
@@ -68,18 +67,23 @@ class VideoStreamProcessor:
         return buffer.getvalue()  # Return JPEG bytes
 
 
-# Initialize make87
-m87.initialize()
+def main():
+    # Initialize make87
+    m87.initialize()
 
-# Setup publisher
-publisher = m87.get_publisher(name="JPEG_STREAM", message_type=JpegImage)
+    # Setup publisher
+    publisher = m87.get_publisher(name="JPEG_STREAM", message_type=ImageJPEG)
 
-# Create the video processor instance with subsampling (e.g., every 5th frame)
-processor = VideoStreamProcessor()
+    # Create the video processor instance with subsampling (e.g., every 5th frame)
+    processor = VideoStreamProcessor(publisher)
 
-# Subscribe to video frames
-subscriber = m87.get_subscriber(name="VIDEO_DATA", message_type=FrameAny)
-subscriber.subscribe(processor.process_frame)
+    # Subscribe to video frames
+    subscriber = m87.get_subscriber(name="VIDEO_DATA", message_type=FrameAny)
+    subscriber.subscribe(processor.process_frame)
 
-# Start event loop
-m87.loop()
+    # Start event loop
+    m87.loop()
+
+
+if __name__ == "__main__":
+    main()

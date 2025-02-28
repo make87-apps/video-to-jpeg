@@ -2,8 +2,8 @@ build_kit:
   name: python3
   version: latest
 inbound_topics:
-  - name: H264_FRAME
-    message_type: make87_messages.video.frame_h264.FrameH264:0.0.82
+  - name: VIDEO_DATA
+    message_type: make87_messages.video.any.FrameAny
 outbound_topics:
   - name: JPEG_IMAGE
-    message_type: make87_messages.image.compressed.image_jpeg.ImageJPEG:0.0.82
+    message_type: make87_messages.image.compressed.image_jpeg.ImageJPEG
