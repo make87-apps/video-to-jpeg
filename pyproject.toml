@@ -9,6 +9,8 @@ version = "0.0.1"
 dependencies = [
   "make87",
   "make87_messages",
+  "pillow>=11.1.0,<12.0.0",
+  "av>=14.2.0,<15.0.0",
 ]
 description = "A small example package"
 readme = "README.md"
