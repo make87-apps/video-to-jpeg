@@ -1,6 +1,11 @@
 build_kit:
-  name: python3
+  name: file://build_kit/Dockerfile
   version: latest
+peripheral_requirements:
+  - name: CARD
+    peripheral_type: GenericDevice
+  - name: RENDER
+    peripheral_type: GenericDevice
 inbound_topics:
   - name: VIDEO_DATA
     message_type: make87_messages.video.any.FrameAny
