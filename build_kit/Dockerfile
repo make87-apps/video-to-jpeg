@@ -11,6 +11,10 @@ RUN apt-get update \
         python3-venv \
         ffmpeg \
         vainfo \
+        i965-va-driver \
+        libva2 \
+        libva-drm2 \
+        libva-glx2 \
     && python3 -m venv ${VIRTUAL_ENV} \
     && ${VIRTUAL_ENV}/bin/pip install --upgrade pip setuptools wheel \
     && apt-get clean \

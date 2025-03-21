@@ -6,6 +6,10 @@ RUN apt-get update \
     && apt-get install --no-install-suggests --no-install-recommends -y \
         ffmpeg \
         vainfo \
+        i965-va-driver \
+        libva2 \
+        libva-drm2 \
+        libva-glx2 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
