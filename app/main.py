@@ -10,7 +10,13 @@ from queue import SimpleQueue, Empty as EmptyException
 
 def detect_vaapi_driver():
     try:
-        result = subprocess.run(["vainfo"], capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["vainfo"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,  # <---- merge stderr into stdout
+            text=True,
+            check=True,
+        )
         lines = result.stdout.splitlines()
     except subprocess.CalledProcessError as e:
         print("vainfo failed, defaulting to iHD")
@@ -22,7 +28,6 @@ def detect_vaapi_driver():
     for line in lines:
         line = line.strip()
         if "Trying to open" in line and "_drv_video.so" in line:
-            # Save the driver candidate from the path
             candidate = line.split("/")[-1].split("_drv_video.so")[0]
         elif "va_openDriver() returns 0" in line and candidate:
             active_driver = candidate
