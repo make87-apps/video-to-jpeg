@@ -8,11 +8,35 @@ import make87
 from queue import SimpleQueue, Empty as EmptyException
 
 
+def detect_vaapi_driver():
+    try:
+        result = subprocess.run(["vainfo"], capture_output=True, text=True, check=True)
+        lines = result.stdout.splitlines()
+    except subprocess.CalledProcessError as e:
+        print("vainfo failed, defaulting to iHD")
+        return "iHD"
+
+    active_driver = "iHD"
+    candidate = None
+
+    for line in lines:
+        line = line.strip()
+        if "Trying to open" in line and "_drv_video.so" in line:
+            # Save the driver candidate from the path
+            candidate = line.split("/")[-1].split("_drv_video.so")[0]
+        elif "va_openDriver() returns 0" in line and candidate:
+            active_driver = candidate
+            break
+
+    print(f"Detected active VAAPI driver: {active_driver}")
+    return active_driver
+
+
 def get_vaapi_decode_support():
     codec_info = {
         "h264": ("VAProfileH264", "h264_vaapi"),
         "hevc": ("VAProfileHEVC", "hevc_vaapi"),
-        "av1":  ("VAProfileAV1", "av1_vaapi"),
+        "av1": ("VAProfileAV1", "av1_vaapi"),
     }
     try:
         result = subprocess.run(["vainfo"], capture_output=True, text=True, check=True)
@@ -22,10 +46,7 @@ def get_vaapi_decode_support():
 
     vaapi_support = {}
     for codec, (va_profile, _) in codec_info.items():
-        vaapi_support[codec] = any(
-            va_profile in line and "VAEntrypointVLD" in line
-            for line in vainfo_lines
-        )
+        vaapi_support[codec] = any(va_profile in line and "VAEntrypointVLD" in line for line in vainfo_lines)
 
     try:
         result = subprocess.run(["ffmpeg", "-decoders"], capture_output=True, text=True, check=True)
@@ -44,17 +65,17 @@ def get_vaapi_decode_support():
         final_info[codec] = {
             "vaapi_supported": vaapi_support.get(codec, False),
             "ffmpeg_decoder": ffmpeg_name,
-            "ffmpeg_available": ffmpeg_name in ffmpeg_decoders
+            "ffmpeg_available": ffmpeg_name in ffmpeg_decoders,
         }
 
     return final_info
-
 
 
 class VideoStreamProcessor:
     def __init__(self, publisher):
         self.publisher = publisher
         self._header_queue = SimpleQueue()
+        self.vaapi_driver = detect_vaapi_driver()
         self.vaapi_capabilities = get_vaapi_decode_support()
         self.codec_type = None  # Set on first valid frame
         self.ffmpeg_proc = None
@@ -64,7 +85,9 @@ class VideoStreamProcessor:
 
         print("VAAPI capabilities detected:")
         for codec, caps in self.vaapi_capabilities.items():
-            print(f"  {codec.upper()} - VAAPI supported: {caps['vaapi_supported']}, FFmpeg decoder: {caps['ffmpeg_decoder']}, Available: {caps['ffmpeg_available']}")
+            print(
+                f"  {codec.upper()} - VAAPI supported: {caps['vaapi_supported']}, FFmpeg decoder: {caps['ffmpeg_decoder']}, Available: {caps['ffmpeg_available']}"
+            )
 
     def start_ffmpeg(self, codec):
         ffmpeg_cmd = ["ffmpeg"]
@@ -73,36 +96,27 @@ class VideoStreamProcessor:
         if vaapi_info.get("vaapi_supported") and vaapi_info.get("ffmpeg_available"):
             print(f"Using VAAPI for {codec} decoding.")
             ffmpeg_cmd += [
-                "-hwaccel", "vaapi",
-                "-hwaccel_output_format", "vaapi",
+                "-hwaccel",
+                "vaapi",
+                "-hwaccel_output_format",
+                "vaapi",
             ]
         else:
             print(f"Falling back to software decoding for {codec}.")
 
-        ffmpeg_cmd += [
-            "-i", "-",
-            "-f", "image2pipe",
-            "-vcodec", "mjpeg",
-            "-q:v", "2",
-            "-"
-        ]
+        ffmpeg_cmd += ["-i", "-", "-f", "image2pipe", "-vcodec", "mjpeg", "-q:v", "2", "-"]
 
         env = os.environ.copy()
-        env["LIBVA_DRIVER_NAME"] = "i965"
+        env["LIBVA_DRIVER_NAME"] = self.vaapi_driver
 
         self.ffmpeg_proc = subprocess.Popen(
-            ffmpeg_cmd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env
+            ffmpeg_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
         )
 
         self.stdout_thread = threading.Thread(target=self.read_ffmpeg_stdout, daemon=True)
         self.stdout_thread.start()
         self.stderr_thread = threading.Thread(target=self.read_ffmpeg_stderr, daemon=True)
         self.stderr_thread.start()
-
 
     def read_ffmpeg_stdout(self):
         """
@@ -150,7 +164,7 @@ class VideoStreamProcessor:
             except Exception as e:
                 print(f"Error reading ffmpeg stdout: {e}")
                 break
-    
+
     def read_ffmpeg_stderr(self):
         """Continuously reads ffmpeg's stderr and prints each line to the terminal."""
         while True:
@@ -158,7 +172,7 @@ class VideoStreamProcessor:
             if not line:
                 break
             # Decode and print the stderr log.
-            print(line.decode('utf-8'), end='')
+            print(line.decode("utf-8"), end="")
 
     def process_frame(self, message: FrameAny):
         """
@@ -176,7 +190,6 @@ class VideoStreamProcessor:
         codec = codec_map[video_type]
         data = getattr(message, video_type).data
         is_keyframe = getattr(message, video_type).is_keyframe
-
 
         # Wait for the first keyframe to ensure correct decoding.
         if not self.received_keyframe:
