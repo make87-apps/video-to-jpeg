@@ -4,9 +4,19 @@ build_kit:
   target_architectures: ["amd64"]
 peripheral_requirements:
   - name: CARD
-    peripheral_type: GenericDevice
+    constraints:
+      type: GenericDevice
+      path_prefix: "/dev/dri/card"
+      path_suffix: null
+      contains: null
+      contains_not: null
   - name: RENDER
-    peripheral_type: GenericDevice
+    constraints:
+      type: GenericDevice
+      path_prefix: "/dev/dri/renderD"
+      path_suffix: null
+      contains: null
+      contains_not: null
 inbound_topics:
   - name: VIDEO_DATA
     message_type: make87_messages.video.any.FrameAny
