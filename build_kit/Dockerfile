@@ -11,7 +11,7 @@ RUN apt-get update \
         python3-venv \
         ffmpeg \
         vainfo \
-        intel-media-va-driver-non-free \
+        intel-media-va-driver \
         i965-va-driver \
         libva2 \
         libva-drm2 \
