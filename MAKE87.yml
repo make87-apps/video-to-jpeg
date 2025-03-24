@@ -1,6 +1,7 @@
 build_kit:
   name: file://build_kit/Dockerfile
   version: latest
+  target_architectures: ["amd64"]
 peripheral_requirements:
   - name: CARD
     peripheral_type: GenericDevice
