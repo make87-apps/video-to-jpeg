@@ -27,4 +27,6 @@ COPY . .
 RUN ${VIRTUAL_ENV}/bin/python3 -m pip install -U pip \
     && ${VIRTUAL_ENV}/bin/python3 -m pip install .
 
+
+
 ENTRYPOINT ["/make87/venv/bin/python3", "-m", "app.main"]
