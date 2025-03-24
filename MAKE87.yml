@@ -3,13 +3,6 @@ build_kit:
   version: latest
   target_architectures: ["amd64"]
 peripheral_requirements:
-  - name: CARD
-    constraints:
-      type: GenericDevice
-      path_prefix: "/dev/dri/card"
-      path_suffix: null
-      contains: null
-      contains_not: null
   - name: RENDER
     constraints:
       type: GenericDevice
