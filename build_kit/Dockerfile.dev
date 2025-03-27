@@ -12,6 +12,7 @@ RUN apt-get update \
         libva-drm2 \
         libva-glx2 \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && true
 
 
