@@ -1,0 +1,7 @@
+{
+  "security.workspace.trust.enabled": true,
+  "security.workspace.trust.startupPrompt": "never",
+  "workbench.colorTheme": "Black++ Grey Matter",
+  "python.pythonPath": "/home/state/venv/bin/python",
+  "python.defaultInterpreterPath": "/home/state/venv/bin/python"
+}

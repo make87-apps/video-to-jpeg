@@ -1,4 +1,4 @@
-FROM ghcr.io/make87/debian:bookworm AS base-image
+FROM linuxserver/ffmpeg:7.1.1 AS base-image
 
 ARG VIRTUAL_ENV=/make87/venv
 
@@ -9,13 +9,7 @@ RUN apt-get update \
         python3 \
         libpython3-dev \
         python3-venv \
-        ffmpeg \
         vainfo \
-        intel-media-va-driver \
-        i965-va-driver \
-        libva2 \
-        libva-drm2 \
-        libva-glx2 \
     && python3 -m venv ${VIRTUAL_ENV} \
     && ${VIRTUAL_ENV}/bin/pip install --upgrade pip setuptools wheel \
     && apt-get clean \
@@ -27,7 +21,6 @@ COPY . .
 
 RUN ${VIRTUAL_ENV}/bin/python3 -m pip install -U pip \
     && ${VIRTUAL_ENV}/bin/python3 -m pip install .
-
 
 
 ENTRYPOINT ["/make87/venv/bin/python3", "-m", "app.main"]
