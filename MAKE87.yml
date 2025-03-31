@@ -1,5 +1,6 @@
 build_kit:
-  name: file://build_kit/Dockerfile
+#  name: file://build_kit/Dockerfile
+  name: python3
   version: latest
   target_architectures: ["amd64"]
 peripheral_requirements:
