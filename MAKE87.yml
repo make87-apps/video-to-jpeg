@@ -2,7 +2,7 @@ build_kit:
   name: file://build_kit/Dockerfile
   version: latest
 inbound_topics:
-  - name: VIDEO_DATA
+  - name: VIDEO_DATA2
     message_type: make87_messages.video.any.FrameAny
 outbound_topics:
   - name: JPEG_IMAGE
