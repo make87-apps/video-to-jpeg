@@ -7,7 +7,7 @@ peripheral_requirements:
     peripheral_type: GenericDevice
     constraints:
       type: GenericDevice
-      path_prefix: "/dev/dri/render"
+      path_prefix: "/dev/dri/renderD"
       path_suffix: null
       contains: null
       contains_not: null
