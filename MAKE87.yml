@@ -4,7 +4,7 @@ build_kit:
   version: latest
   target_architectures: ["amd64"]
 peripheral_requirements:
-  - name: RENDER22
+  - name: RENDER2
     constraints:
       type: GenericDevice
       path_prefix: "/dev/dri/renderD"
