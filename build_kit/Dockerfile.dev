@@ -82,16 +82,16 @@ ENV LANG=C.UTF-8 \
 RUN ${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server --install-extension ms-python.python
 RUN ${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server --install-extension charliermarsh.ruff
 RUN ${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server --install-extension amerey.blackplusplus
-COPY training-tweaks-0.0.3.vsix training-tweaks-0.0.3.vsix
+COPY build_kit/training-tweaks-0.0.3.vsix training-tweaks-0.0.3.vsix
 RUN ${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server --install-extension training-tweaks-0.0.3.vsix || true
-COPY custom-settings-extension.js /home/workspace/.openvscode-server/extensions/spkane.training-tweaks-0.0.3/out/extension.js
-COPY custom-remote-settings.json /home/workspace/.openvscode-server/data/Machine/settings.json
+COPY build_kit/custom-settings-extension.js /home/workspace/.openvscode-server/extensions/spkane.training-tweaks-0.0.3/out/extension.js
+COPY build_kit/custom-remote-settings.json /home/workspace/.openvscode-server/data/Machine/settings.json
 
 # Default exposed port if none is specified
 EXPOSE 3000
 
 # Copy the startup script
-COPY entrypoint-dev.sh /entrypoint-dev.sh
+COPY build_kit/entrypoint-dev.sh /entrypoint-dev.sh
 RUN chmod +x /entrypoint-dev.sh
 
 # Set the default command to execute the startup script
