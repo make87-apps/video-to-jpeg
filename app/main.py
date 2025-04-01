@@ -18,7 +18,7 @@ def detect_vaapi_driver():
             check=True,
         )
         lines = result.stdout.splitlines()
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         print("vainfo failed, defaulting to iHD")
         return "iHD"
 
