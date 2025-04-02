@@ -1,11 +1,11 @@
-import os
 import subprocess
 import threading
+from queue import SimpleQueue, Empty as EmptyException
+
+import make87
+from make87_messages.core.header_pb2 import Header
 from make87_messages.image.compressed.image_jpeg_pb2 import ImageJPEG
 from make87_messages.video.any_pb2 import FrameAny
-from make87_messages.core.header_pb2 import Header
-import make87
-from queue import SimpleQueue, Empty as EmptyException
 
 
 def get_qsv_decode_support():
@@ -238,3 +238,7 @@ def main():
     subscriber = make87.get_subscriber(name="VIDEO_DATA", message_type=FrameAny)
     subscriber.subscribe(processor.process_frame)
     make87.loop()
+
+
+if __name__ == "__main__":
+    main()
