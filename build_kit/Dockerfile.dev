@@ -97,7 +97,6 @@ RUN chmod +x /entrypoint-dev.sh
 # Set the default command to execute the startup script
 ENTRYPOINT ["/entrypoint-dev.sh", "/home/state/code"]
 
-
 ## Custom Add-ons
 
 RUN apt-get update \
