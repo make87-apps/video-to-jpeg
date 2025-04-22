@@ -1,18 +1,18 @@
-import os
 import subprocess
 import threading
+from queue import SimpleQueue, Empty as EmptyException
+
+import make87
+from make87_messages.core.header_pb2 import Header
 from make87_messages.image.compressed.image_jpeg_pb2 import ImageJPEG
 from make87_messages.video.any_pb2 import FrameAny
-from make87_messages.core.header_pb2 import Header
-import make87
-from queue import SimpleQueue, Empty as EmptyException
 
 
 class VideoStreamProcessor:
     def __init__(self, publisher):
         self.publisher = publisher
         self._header_queue = SimpleQueue()
-        self.codec_type = None  # Set on first valid frame
+        self.codec_type = None  # Set on first valid frame.
         self.ffmpeg_proc = None
         self.stdout_thread = None
         self.stderr_thread = None
@@ -20,8 +20,11 @@ class VideoStreamProcessor:
 
     def start_ffmpeg(self, codec):
         ffmpeg_cmd = ["ffmpeg"]
-        ffmpeg_cmd += ["-i", "-", "-f", "image2pipe", "-vcodec", "mjpeg", "-q:v", "2", "-"]
 
+        # Input from stdin.
+        ffmpeg_cmd += ["-i", "-", "-c:v", "mjpeg", "-q:v", "2", "-f", "image2pipe", "-"]
+
+        print("Running FFmpeg command:", " ".join(ffmpeg_cmd))
         self.ffmpeg_proc = subprocess.Popen(
             ffmpeg_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
@@ -46,24 +49,20 @@ class VideoStreamProcessor:
                     break
                 buffer.extend(chunk)
 
-                # If the buffer has leading data before the JPEG start marker,
-                # remove it to keep the buffer small.
+                # Remove any leading data before the JPEG start marker.
                 start = buffer.find(b"\xff\xd8")
                 if start > 0:
                     del buffer[:start]
 
-                # Look for complete JPEGs in the current buffer.
+                # Look for complete JPEG images in the buffer.
                 while True:
                     start = buffer.find(b"\xff\xd8")
                     if start == -1:
                         break
-                    # Search for the end marker *after* the start marker
                     end = buffer.find(b"\xff\xd9", start + 2)
                     if end == -1:
-                        # Incomplete JPEG; wait for more data.
                         break
 
-                    # Yield the complete JPEG image.
                     jpeg_data = bytes(buffer[start : end + 2])
                     try:
                         header = self._header_queue.get_nowait()
@@ -72,7 +71,6 @@ class VideoStreamProcessor:
                         header.timestamp.GetCurrentTime()
                     jpeg_message = ImageJPEG(header=header, data=jpeg_data)
                     self.publisher.publish(jpeg_message)
-                    # Remove the processed image from the buffer.
                     del buffer[: end + 2]
             except Exception as e:
                 print(f"Error reading ffmpeg stdout: {e}")
@@ -84,54 +82,68 @@ class VideoStreamProcessor:
             line = self.ffmpeg_proc.stderr.readline()
             if not line:
                 break
-            # Decode and print the stderr log.
             print(line.decode("utf-8"), end="")
 
     def process_frame(self, message: FrameAny):
-        """
-        Processes incoming video frame packets by writing the packet data
-        into ffmpeg's stdin.
-        Waits for the first keyframe to start feeding packets.
-        """
+        """Process incoming video frame packets and decode them into JPEGs, applying subsampling."""
+        # Identify codec
         video_type = message.WhichOneof("data")
-        codec_map = {"h264": "h264", "h265": "hevc", "av1": "av1"}
-
-        if video_type not in codec_map:
+        if video_type == "h264":
+            codec_name = "h264"
+            submessage = message.h264
+        elif video_type == "h265":
+            codec_name = "hevc"
+            submessage = message.h265
+        elif video_type == "av1":
+            codec_name = "av1"
+            submessage = message.av1
+        else:
             print("Unknown frame type received, discarding.")
             return
 
-        codec = codec_map[video_type]
-        data = getattr(message, video_type).data
-        is_keyframe = getattr(message, video_type).is_keyframe
+        # Initialize decoder on first frame
+        if self.codec_context is None:
+            self.initialize_decoder(codec_name)
 
-        # Wait for the first keyframe to ensure correct decoding.
+        # Wait for a keyframe to start decoding
         if not self.received_keyframe:
-            if self.ffmpeg_proc is None:
-                self.codec_type = codec
-                self.start_ffmpeg(codec)
-
-            if not is_keyframe:
+            if not submessage.is_keyframe:
                 print("Dropping non-keyframe as we haven't received a keyframe yet.")
-                return
+                return  # Skip until first keyframe arrives
             self.received_keyframe = True
-            print("Received first keyframe, starting ffmpeg feeding.")
+            print("Received first keyframe, starting decoding.")
 
-        # Write the raw packet data into ffmpeg's stdin.
         try:
             self._header_queue.put(message.header)
             self.ffmpeg_proc.stdin.write(data)
-            # self.ffmpeg_proc.stdin.flush()
         except Exception as e:
-            print(f"Error writing to ffmpeg stdin: {e}")
+            print(f"Decoder error: {e}")
+
+    @staticmethod
+    def convert_frame_to_jpeg(frame: av.VideoFrame) -> bytes:
+        """Convert an AVFrame (PyAV frame) to a JPEG-encoded bytes object."""
+        img = frame.to_image()  # Convert to PIL Image
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=95)  # Save as JPEG in memory
+        return buffer.getvalue()  # Return JPEG bytes
 
 
 def main():
-    make87.initialize()
-    publisher = make87.get_publisher(name="JPEG_IMAGE", message_type=ImageJPEG)
+    # Initialize make87
+    m87.initialize()
+
+    # Setup publisher
+    publisher = m87.get_publisher(name="JPEG_IMAGE", message_type=ImageJPEG)
+
+    # Create the video processor instance with subsampling (e.g., every 5th frame)
     processor = VideoStreamProcessor(publisher)
-    subscriber = make87.get_subscriber(name="VIDEO_DATA", message_type=FrameAny)
+
+    # Subscribe to video frames
+    subscriber = m87.get_subscriber(name="VIDEO_DATA", message_type=FrameAny)
     subscriber.subscribe(processor.process_frame)
-    make87.loop()
+
+    # Start event loop
+    m87.loop()
 
 
 if __name__ == "__main__":

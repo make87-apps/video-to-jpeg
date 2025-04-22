@@ -1,6 +1,16 @@
 build_kit:
   name: file://build_kit/Dockerfile
   version: latest
+  target_architectures: ["amd64"]
+peripheral_requirements:
+  - name: RENDER
+    peripheral_type: GenericDevice
+    constraints:
+      type: GenericDevice
+      path_prefix: "/dev/dri/renderD"
+      path_suffix: null
+      contains: null
+      contains_not: null
 inbound_topics:
   - name: VIDEO_DATA2
     message_type: make87_messages.video.any.FrameAny
