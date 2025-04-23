@@ -85,65 +85,57 @@ class VideoStreamProcessor:
             print(line.decode("utf-8"), end="")
 
     def process_frame(self, message: FrameAny):
-        """Process incoming video frame packets and decode them into JPEGs, applying subsampling."""
-        # Identify codec
+        """
+        Processes incoming video frame packets by writing the packet data
+        into ffmpeg's stdin.
+        Waits for the first keyframe to start feeding packets.
+        """
         video_type = message.WhichOneof("data")
-        if video_type == "h264":
-            codec_name = "h264"
-            submessage = message.h264
-        elif video_type == "h265":
-            codec_name = "hevc"
-            submessage = message.h265
-        elif video_type == "av1":
-            codec_name = "av1"
-            submessage = message.av1
-        else:
+        codec_map = {"h264": "h264", "h265": "hevc", "av1": "av1"}
+
+        if video_type not in codec_map:
             print("Unknown frame type received, discarding.")
             return
 
-        # Initialize decoder on first frame
-        if self.codec_context is None:
-            self.initialize_decoder(codec_name)
+        codec = codec_map[video_type]
+        data = getattr(message, video_type).data
+        is_keyframe = getattr(message, video_type).is_keyframe
 
-        # Wait for a keyframe to start decoding
+        # Wait for the first keyframe to ensure correct decoding.
         if not self.received_keyframe:
-            if not submessage.is_keyframe:
+            if self.ffmpeg_proc is None:
+                self.codec_type = codec
+                self.start_ffmpeg(codec)
+
+            if not is_keyframe:
                 print("Dropping non-keyframe as we haven't received a keyframe yet.")
-                return  # Skip until first keyframe arrives
+                return
             self.received_keyframe = True
-            print("Received first keyframe, starting decoding.")
+            print("Received first keyframe, starting ffmpeg feeding.")
 
         try:
             self._header_queue.put(message.header)
             self.ffmpeg_proc.stdin.write(data)
         except Exception as e:
-            print(f"Decoder error: {e}")
-
-    @staticmethod
-    def convert_frame_to_jpeg(frame: av.VideoFrame) -> bytes:
-        """Convert an AVFrame (PyAV frame) to a JPEG-encoded bytes object."""
-        img = frame.to_image()  # Convert to PIL Image
-        buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=95)  # Save as JPEG in memory
-        return buffer.getvalue()  # Return JPEG bytes
+            print(f"Error writing to ffmpeg stdin: {e}")
 
 
 def main():
     # Initialize make87
-    m87.initialize()
+    make87.initialize()
 
     # Setup publisher
-    publisher = m87.get_publisher(name="JPEG_IMAGE", message_type=ImageJPEG)
+    publisher = make87.get_publisher(name="JPEG_IMAGE", message_type=ImageJPEG)
 
     # Create the video processor instance with subsampling (e.g., every 5th frame)
     processor = VideoStreamProcessor(publisher)
 
     # Subscribe to video frames
-    subscriber = m87.get_subscriber(name="VIDEO_DATA", message_type=FrameAny)
+    subscriber = make87.get_subscriber(name="VIDEO_DATA", message_type=FrameAny)
     subscriber.subscribe(processor.process_frame)
 
     # Start event loop
-    m87.loop()
+    make87.loop()
 
 
 if __name__ == "__main__":
